@@ -1,0 +1,5 @@
+Resources:
+    QuizBucket:
+        Type: AWS::S3::Bucket
+        Properties:
+            BucketName: nk-serverless-quiz-questions

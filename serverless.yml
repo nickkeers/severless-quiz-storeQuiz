@@ -1,0 +1,89 @@
+# Welcome to Serverless!
+#
+# This file is the main config file for your service.
+# It's very minimal at this point and uses default values.
+# You can always add more config options for more control.
+# We've included some commented out config examples here.
+# Just uncomment any of them to get that config option.
+#
+# For full config options, check the docs:
+#    docs.serverless.com
+#
+# Happy Coding!
+
+service: serverless-quiz
+# app and org for use with dashboard.serverless.com
+app: serverless-quiz
+org: nickkeers
+
+# You can pin your service to only deploy with a specific Serverless version
+# Check out our docs for more details
+# frameworkVersion: "=X.X.X"
+
+custom:
+    stage: ${opt:stage, self:provider.stage}
+    tableName: ${self:custom.stage}-quiz-questions
+
+provider:
+    name: aws
+    runtime: nodejs12.x
+    region: eu-west-2
+    iamRoleStatements:
+        - Effect: "Allow"
+          Action:
+              - "s3:GetObject"
+          Resource: "arn:aws:s3:::nk-serverless-quiz-questions/*"
+        - Effect: "Allow"
+          Action:
+              - "dynamodb:PutItem"
+          Resource: "arn:aws:dynamodb:${self:provider.region}:*:table/${self:custom.tableName}"
+
+#   s3:
+#     quizBucket:
+#       name: nk-serverless-quizzes-bkt
+# you can overwrite defaults here
+#  stage: dev
+
+plugins:
+    - serverless-plugin-typescript
+
+# you can add statements to the Lambda function's IAM Role here
+
+# you can define service wide environment variables here
+#  environment:
+#    variable1: value1
+
+# you can add packaging information here
+#package:
+#  include:
+#    - include-me.js
+#    - include-me-dir/**
+#  exclude:
+#    - exclude-me.js
+#    - exclude-me-dir/**
+
+functions:
+    storeQuiz:
+        handler: handler.storeQuiz
+        events:
+            - s3:
+                  bucket: nk-serverless-quiz-questions
+                  event: s3:ObjectCreated:*
+                  rules:
+                      - suffix: .json
+        environment:
+            TABLE_NAME: ${self:custom.tableName}
+
+# you can add CloudFormation resource templates here
+#resources:
+#  Resources:
+#    NewResource:
+#      Type: AWS::S3::Bucket
+#      Properties:
+#        BucketName: my-new-bucket
+#  Outputs:
+#     NewOutput:
+#       Description: "Description for the output"
+#       Value: "Some output value"
+resources:
+    - ${file(resources/quiz-table.yml)}
