@@ -46,6 +46,7 @@ provider:
 
 plugins:
     - serverless-plugin-typescript
+    - serverless-prune-plugin
 
 # you can add statements to the Lambda function's IAM Role here
 

@@ -1,11 +1,12 @@
-import { S3Event, Context } from "aws-lambda";
+import { S3Event, Context, Callback } from "aws-lambda";
 import * as AWS from "aws-sdk";
+import "serverless";
 
 const s3 = new AWS.S3();
 const db = new AWS.DynamoDB.DocumentClient();
 
 let addQuizToDB = async (fileDate: string, data: AWS.S3.GetObjectOutput) => {
-    if(!data.Body) return;
+    if(!data.Body) throw "Empty S3 questions body";
 
     let contents = JSON.parse(data.Body.toString());
 
@@ -17,10 +18,10 @@ let addQuizToDB = async (fileDate: string, data: AWS.S3.GetObjectOutput) => {
         },
     };
 
-    await db.put(params).promise().catch(err => console.log(`Error putting quiz questions into DB: ${err}`))
+    await db.put(params).promise().catch(err => console.error(`Error putting quiz questions into DB: ${err}`))
 };
 
-export const storeQuiz = async (event: S3Event, context: Context) => {
+export const storeQuiz = async (event: S3Event, context: Context, callback: Callback) => {
     console.log(event);
     const srcBucket = event.Records[0].s3.bucket.name;
     const srcKey = decodeURIComponent(
@@ -30,8 +31,8 @@ export const storeQuiz = async (event: S3Event, context: Context) => {
     const fileParts = srcKey.match("quiz_([^.]*).json");
 
     if (!fileParts) {
-        console.log(`Could not determine quiz date, key was: ${srcKey}`);
-        return;
+        console.error(`Could not determine quiz date, key was: ${srcKey}`);
+        return callback(`Could not determine quiz date, key was: ${srcKey}`, {});
     }
 
     const fileDate = fileParts[1];
@@ -42,15 +43,12 @@ export const storeQuiz = async (event: S3Event, context: Context) => {
             Key: srcKey,
         };
 
-        await s3
+        return s3
             .getObject(params)
             .promise()
             .then((data) => addQuizToDB(fileDate, data));
     } catch (error) {
-        console.log(error);
-        context.captureError(error);
-        return;
+        console.error(error);
+        return callback(error, {});
     }
-
-    return;
 };
